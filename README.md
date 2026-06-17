@@ -1,0 +1,2 @@
+# embinotec-weatherstation
+ESPhome weatherstation
