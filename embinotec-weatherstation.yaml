@@ -80,13 +80,14 @@ esphome:
   name_add_mac_suffix: false
   comment: WeatherStation with 7 sensors.
 
+
+## ------ ESP32 configuration ------
+## Please be aware of changing one of these configuration options could cause in uncompilable code.
 #esp32:
 #  board: esp32-s3-devkitc-1
 #  framework:
 #    type: esp-idf
 
-## ------ ESP32 configuration ------
-## Please be aware of changing one of these configuration options could cause in uncompilable code.
 esp32:
   variant: esp32c6
   flash_size: 4MB
@@ -106,7 +107,14 @@ esp32:
 
 ## ------ SUBSTITUTIONS -------
 #substitutions:
- 
+
+
+## ------ GLOBALS --------
+globals:
+  - id: pulse_count
+    type: int
+    restore_value: no
+    initial_value: '0'
 
 ## ------ EXTERNAL COMPONENTS -------
 external_components:
@@ -120,10 +128,11 @@ external_components:
     components: [si1133]
 
 ## ------ LOGGING ------
+## Options: NONE, ERROR, WARN, INFO, DEBUG, VERBOSE, VERY_VERBOSE
 logger:
-  level: debug
-  logs:
-    lvgl: info
+  level: DEBUG
+  #logs:
+ #   lvgl: info
 
 ## ------ HOME ASSISTANT API ------
 ## To generate a new based64 32 byte code, go to https://generate-random.org/base64-string.
@@ -157,6 +166,8 @@ wifi:
     password: "embinotec"
 
 ## ------- mDNS SETTINGS -------
+## mDNS is a computer networking protocol that resolves hostnames to IP addresses within small networks that do not include a local name server.
+## example: embinotec-weatherstation.local
 mdns:
   disabled: false # Set to true to disable mDNS
 
@@ -214,10 +225,10 @@ i2c:
 ## ESP32 should be powered by three times 2800mAh rechargable AA batteries.
 ## To save some power the ESP should not always be connected to your wifi and have some rest
 ## to cover the hole day with measurements.
-deep_sleep:
-  id: deep_sleep_1
-  run_duration: 1min
-  sleep_duration: 2min
+#deep_sleep:
+#  id: deep_sleep_1
+#  run_duration: 1min
+#  sleep_duration: 2min
 
 ## Example configuration with single pin wakeup on BK72xx
 #deep_sleep:
@@ -245,15 +256,15 @@ status_led:
 
 
 ## ------ UV INDEX & LIGHT SENSOR -------
-si1133:
-  address: 0x55  ## DO NOT CHANGE
-  update_interval: 30s
-  uv_index:
-    name: "Light.UV Index"
-    force_update: true
-  ambient_light:
-    name: "Light.Illuminance"
-    force_update: true
+#si1133:
+#  address: 0x55  ## DO NOT CHANGE
+#  update_interval: 30s
+#  uv_index:
+#    name: "Light.UV Index"
+#    force_update: true
+#  ambient_light:
+#    name: "Light.Illuminance"
+#    force_update: true
 
 ## ------ Interval: Vor jeder Messung die Teiler aktivieren ------
 interval:
@@ -273,14 +284,16 @@ switch:
   ## To avoid power leakages due to electronic
   ## DO NOT CHANGE
   - platform: gpio
-    pin: GPIO22
+    #pin: GPIO20
+    pin: GPIO22 ##esp-c6
     id: divider_solar_enable
     internal: true
     restore_mode: ALWAYS_OFF
   ## To avoid power leakages due to electronic
   ## DO NOT CHANGE
   - platform: gpio
-    pin: GPIO23
+    #pin: GPIO19
+    pin: GPIO23 ##esp32-c6
     id: divider_battery_enable
     internal: true
     restore_mode: ALWAYS_OFF
@@ -288,37 +301,65 @@ switch:
 ## --------- SENSOR SECTION --------------
 sensor:
 ## SUB: ----- WIND DIRECTION ------
+## North is 0 or 360 degrees -> East 90 -> South 180 -> West 270
   - platform: adc
     pin: GPIO2
     id: wind_dir
+    internal: true
+    #raw: true
     #name: "Wind Direction X" ## Uncomment, if you would like to see the values in Home Assistant
     attenuation: 11dB # Adjust attenuation according to your ESP32 specs
-    filters:
-      - sliding_window_moving_average:
-          window_size: 5
-          send_every: 5
+    update_interval: 500ms
+    samples: 5
+    sampling_mode: avg  ## avg, min, max
+    #filters:
+    #  - sliding_window_moving_average:
+    #      window_size: 5
+    #      send_every: 5
 
   - platform: adc
     pin: GPIO3
     id: wind_dil
+   # raw: true
+    internal: true
     #name: "Wind Direction Y" ## Uncomment, if you would like to see the values in Home Assistant
     attenuation: 11dB
-    filters:
-      - sliding_window_moving_average:
-          window_size: 5
-          send_every: 5
+    update_interval: 500ms
+    samples: 5
+    sampling_mode: avg  ## avg, min, max
+    #filters:
+    #  - sliding_window_moving_average:
+    #      window_size: 5
+    #      send_every: 5
+
   ## Calculating the direction from the two sensor values above.
   - platform: template
-    name: "Wind.Direction"
-    icon: 'mdi:windsock'
+    name: "Wind.Degrees"
+    icon: 'mdi:compass'
     id: wind_direction_degrees
     unit_of_measurement: "°"
     accuracy_decimals: 0
+    update_interval: 2500ms
     lambda: |-
-      // Get the voltages (or raw values) from both sensors
-      float x = id(wind_dir).state;
-      float y = id(wind_dil).state;
-      
+      // Get the voltages (not raw values) from both sensors
+      float x_v = id(wind_dil).state;// - 2048.0; // Center the ADC readings around 0 by subtracting the midpoint (e.g., 1.65V or raw value ~2048) // Assuming raw 12-bit ADC values (0 - 4095)
+      float y_v = id(wind_dir).state;// - 2048.0;
+
+      // ---- Calibration per sensor (measured) ----
+      const float X_MIN = 1.30f;
+      const float X_MAX = 2.05f;
+      const float Y_MIN = 1.30f;
+      const float Y_MAX = 2.05f;
+      // --------------------------------------------------------------
+
+      float x_mid = (X_MIN + X_MAX) / 2.0f;
+      float x_amp = (X_MAX - X_MIN) / 2.0f;
+      float y_mid = (Y_MIN + Y_MAX) / 2.0f;
+      float y_amp = (Y_MAX - Y_MIN) / 2.0f;
+
+      float x = (x_v - x_mid) / x_amp;   // now values are between -1 and +1
+      float y = (y_v - y_mid) / y_amp;
+
       // Prevent division by zero
       if (x == 0.0 && y == 0.0) return 0.0;
       
@@ -333,51 +374,30 @@ sensor:
         angle_deg += 360.0;
       }
       
-       // 16-point compass array
-      const char* directions[] = {
-        "N", "NNE", "NE", "ENE",
-        "E", "ESE", "SE", "SSE",
-        "S", "SSW", "SW", "WSW",
-        "W", "WNW", "NW", "NNW"
-      };
-      
-      // Divide by 22.5 degrees per sector and round to the nearest index
-      int index = round((angle_deg / 22.5));
-      
-      // 360 and 0 are both North, so wrap the 16th index (index 16) back to 0
-      //return directions[index % 16];
+      // mechanical offset
+      const float MOUNT_OFFSET = 187.0f;  // 180 switch North/South + 7 Degrees PCB mount
+      angle_deg += MOUNT_OFFSET;
+      if (angle_deg >= 360.0f) angle_deg -= 360.0f;
+      if (angle_deg < 0.0f) angle_deg += 360.0f;
 
       return angle_deg;
 
         
   ## SUB: ----- WIND SPEED -----
-  - platform: pulse_counter
-    pin: 
-      number: GPIO11
-      mode: INPUT_PULLUP
-    #unit_of_measurement: 'mph' ##change to m/s if metric
-    unit_of_measurement: 'm/s' ##change to m/s if metric
+  - platform: template
+    unit_of_measurement: 'm/s' 
     name: 'Wind.Speed'
     icon: 'mdi:weather-windy'
-    #icon: 'mdi:wind-power'
     id: wind_speed
-    count_mode:
-      rising_edge: DISABLE
-      falling_edge: INCREMENT
-    internal_filter: 13us
-   # update_interval: 5s 
-    #rotations_per_sec = pulses/2/60
-    #circ_m=0.09*2*3.14 = 0.5652
-    #mps = 1.18*circ_m*rotations_per_sec  
-    #mps = 1.18*0.5652/2/60 =0,0055578
-    filters:
-      # - multiply: 0.0055578 #use for m/s
-      # - multiply: 2.237 #m/s to mph
-      # - sliding_window_moving_average:
-      #     window_size: 4
-      #     send_every: 1
-      #- multiply: 0.04973 #1.492mph switch to close 1/sec per spec, pulse/sec (/60/2)*1.492
-       - multiply: 0.0124327986 #m/s * mph conversion
+    accuracy_decimals: 2 
+    update_interval: 5s
+    lambda: |-
+      int count = id(pulse_count);
+      id(pulse_count) = 0;
+      float rotations_per_sec = count / 2.0f / 5.0f;   // update_interval = 5s // 2 pulses per turn
+      float circ_m = 0.09f * 2.0f * 3.14159f;
+      
+      return 1.18f * circ_m * rotations_per_sec;
 
 
 ## SUB: ----- TEMPERATURE | HUMIDITY  ------
@@ -428,13 +448,14 @@ sensor:
  ## SUB: ----- BATTERY VOLTAGE ------
  ## maximum 4.5V with 3 AA NiMH rechargeables, voltage divider 120k and 68k
   - platform: adc
-    pin: GPIO4
+    pin: GPIO5
     name: "Battery.Voltage"
     id: battery_voltage_raw
     icon: "mdi:battery-arrow-up-outline"
     update_interval: 30s
     attenuation: 11db
     accuracy_decimals: 2
+    raw: false
     unit_of_measurement: "V"
     device_class: voltage
     state_class: measurement
@@ -447,15 +468,16 @@ sensor:
     filters:
       - lambda: |-
           const float vce_sat = 0.30;   // V, Sättigungsspannung EMD22
-          const float r1 = 56000.0;     // Ohm
-          const float r2 = 100000.0;    // Ohm
+          const float r1 = 100000.0;     // Ohm
+          const float r2 = 56000.0;    // Ohm
           if (x < vce_sat) return vce_sat;
           return (x - vce_sat) * (r1 + r2) / r2 + vce_sat;
       
 ## SUB: ----- SOLAR PANEL VOLTAGE ------
-## maximum 8V with full sunlight, voltage divider 56k and 100k
+## maximum @8V with full sunlight, voltage divider 56k and 100k
+## maximum @6V with full sunlight, voltage divider 120k and 100k
   - platform: adc
-    pin: GPIO5
+    pin: GPIO4
     name: "Solarpanel.Voltage"
     id: solar_voltage_raw
     icon: "mdi:solar-power-variant-outline"
@@ -482,6 +504,37 @@ sensor:
           if (x < vce_sat) return vce_sat;  // Schutz gegen negative Werte
           return (x - vce_sat) * (r1 + r2) / r2 + vce_sat;
 
+## SUB: ----- Internal Sensors-------
+  - platform: internal_temperature
+    name: "CPU Temperature"
+    update_interval: 30s  ## optional
+
+## ------ Wind as text sensor
+text_sensor:
+  - platform: template
+    name: "Wind.Direction"
+    icon: 'mdi:windsock'
+    id: wind_direction_text
+    update_interval: 2500ms
+    lambda: |-
+      const char* directions[] = {
+        "N", "NNE", "NE", "ENE",
+        "E", "ESE", "SE", "SSE",
+        "S", "SSW", "SW", "WSW",
+        "W", "WNW", "NW", "NNW"
+      };
+
+      float angle_deg = id(wind_direction_degrees).state;
+
+      // NAN-Absicherung, falls der ADC-Sensor noch keinen gültigen Wert hat
+      if (isnan(angle_deg)) return {};
+
+      int index = ((int) round(angle_deg / 22.5)) % 16;
+      if (index < 0) index += 16;
+
+      return std::string(directions[index]);
+
+
 ## Toggle wifi between openThread
 binary_sensor:
   - platform: gpio
@@ -500,7 +553,21 @@ binary_sensor:
             else:
               - logger.log: "Turning on Wi-Fi..."
               - wifi.enable
-  
+## SUB: -------- Wind speed pulse counter --------
+  - platform: gpio
+    pin:
+      number: GPIO11
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    id: wind_reed
+    filters:
+      - delayed_on_off: 3ms  
+    on_press:
+      then:
+        - lambda: 'id(pulse_count) += 1;'
+
 ## SUB: ------ CHARGE IN PROGESS -----
   - platform: gpio
     pin: 
