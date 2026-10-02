@@ -1,6 +1,6 @@
 # embinotec WeatherStation
 
-ESPHome-basierte Wetterstation auf Basis eines ESP32-C6, konform zu den "Made for ESPHome"-Anforderungen. Die Station misst Windgeschwindigkeit, Windrichtung, Niederschlag, Außentemperatur/-feuchte, UV-Index/Helligkeit sowie den eigenen Lade- und Betriebszustand (Solar/Akku) und stellt alle Werte über die ESPHome-API in Home Assistant bereit.
+ESPHome-basierte Wetterstation auf Basis eines ESP32-C6, konform zu den "Made for ESPHome"-Anforderungen. Die Station misst Windgeschwindigkeit, Windrichtung, Niederschlag, Außentemperatur/-feuchte, Helligkeit/Spektrum, barometrischer Druck sowie den eigenen Lade- und Betriebszustand (Solar/Akku) und stellt alle Werte über die ESPHome-API in Home Assistant bereit.
 
 ## Funktionsumfang
 
@@ -46,7 +46,7 @@ Weitere Pinout-Referenzen (ESP32-S3-DevKitC-1, ESP32-C6 SuperMini) sind als Komm
 
 ## Voraussetzungen
 
-- ESPHome ≥ `2026.5.1`
+- ESPHome ≥ `2026.8.0`
 - Home Assistant (für die API-Anbindung und optional die Zeitsynchronisation via `time: platform: homeassistant`)
 - Eine `secrets.yaml` im selben Verzeichnis mit folgenden Einträgen:
 

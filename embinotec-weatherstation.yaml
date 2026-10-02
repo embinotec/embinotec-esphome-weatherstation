@@ -1,5 +1,6 @@
-## embinotec modifies smart home devices to the "made for esphome" requirements.
-## this weatherstation could be purchased at 
+## embinotec develops smart home devices to fit the "made for esphome"
+## this weatherstation could be purchased at https://www.embinotec.de/shop
+## this yaml file is designed for hardware rev1.3
 
 
 ## How to use this configuration file:
@@ -86,6 +87,11 @@ globals:
     restore_value: false
     initial_value: 'false'
 
+  - id: battery_present_state
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+
 ## ------ EXTERNAL COMPONENTS -------
 external_components:
 #  - source:
@@ -124,7 +130,8 @@ wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
   use_address: embinotec-weatherstation.local ## when 
-  power_save_mode: NONE    ## OPTIONS: NONE (least power saving), LIGHT (Default), HIGH (most power saving)
+  power_save_mode: HIGH    ## OPTIONS: NONE (least power saving), LIGHT (Default), HIGH (most power saving)
+  ## 80mA NONE | 72mA LIGHT | 60mA HIGH
   fast_connect:  ## Optional: speeds up connection
     enabled: true
     storage: rtc
@@ -219,8 +226,8 @@ i2c:
 ## to cover the hole day with measurements.
 deep_sleep:
   id: during_day
-  run_duration: 5min
-  sleep_duration: 10min
+  run_duration: 3min
+  sleep_duration: 5min
 
   #- id: during_night
   #  run_duration: 5min
@@ -266,13 +273,39 @@ interval:
       - switch.turn_on: divider_battery_enable
       - delay: 1200ms    ## 1uF stabilizing time
       - component.update: battery_voltage_raw
-      ## wind
-      - component.update: wind_direction_degrees
-      - component.update: wind_speed
+      - delay: 2100ms                          # ← delayed_on/off abwarten
+      - lambda: |-
+          float v = id(battery_voltage_raw).state;
+          bool charging = id(charge_detection).state;
+
+          bool present;
+          if (charging) {
+            // Wenn Laden aktiv → Akku definitiv vorhanden
+            // battery_present_state NICHT zurücksetzen
+            present = true;
+          } else {
+            // Normaler Fall: Spannung auswerten
+            present = !isnan(v) && v > 0.1f;
+          }
+
+          id(battery_present_state) = present;
+          id(battery_present).publish_state(present);
+      - component.update: battery_status_text  # ← danach status text
+        
       ## temperature and humidity
       - component.update: outside_temp_humi
       ## light
       - component.update: lichtsensor
+        
+  - interval: 2500ms
+    id: update_wind
+    then:
+      ## wind
+      - component.update: wind_dir ## wind_dir and wind_dil update at the same time
+      - component.update: wind_dil ## wind_dir and wind_dil update at the same time
+      - delay: 400ms  ## 5avg x 20ms x 2 channels = min. 200ms
+      - component.update: wind_direction_degrees
+      - component.update: wind_speed
 
 
 ## --------- OUTPUT --------------
@@ -308,10 +341,13 @@ switch:
     output: divider_battery_enable_pin
     restore_mode: ALWAYS_OFF
 
+## ESP32 uses 80mA when active and in wifi and only 3mA during deep sleep
+## stay awake could be used to prevent deep sleep
   - platform: template
-    name: "Disable Deep Sleep"
+    name: "Stay awake"
     id: disable_sleep_switch
     optimistic: true
+    
     turn_on_action:
       - logger.log: "Deep sleep disabled via switch"
       - deep_sleep.prevent: during_day
@@ -329,8 +365,8 @@ sensor:
     internal: true
     #raw: true
     #name: "Wind Direction X" ## Uncomment, if you would like to see the values in Home Assistant
-    attenuation: 11dB # Adjust attenuation according to your ESP32 specs
-    update_interval: 500ms
+    attenuation: 11dB ## Adjust attenuation according to your ESP32 specs
+    update_interval: never   ## ATTENTION: DO NOT CHANGE: Must be updated by interval together with wind_dil
     samples: 5
     sampling_mode: avg  ## avg, min, max
     #filters:
@@ -345,7 +381,7 @@ sensor:
     internal: true
     #name: "Wind Direction Y" ## Uncomment, if you would like to see the values in Home Assistant
     attenuation: 11dB
-    update_interval: 500ms
+    update_interval: never   ## ATTENTION: DO NOT CHANGE: Must be updated by interval together with wind_dir
     samples: 5
     sampling_mode: avg  ## avg, min, max
     #filters:
@@ -360,7 +396,7 @@ sensor:
     id: wind_direction_degrees
     unit_of_measurement: "°"
     accuracy_decimals: 0
-    update_interval: 2500ms
+    update_interval: never
     lambda: |-
       // Get the voltages (not raw values) from both sensors
       float x_v = id(wind_dil).state;// - 2048.0; // Center the ADC readings around 0 by subtracting the midpoint (e.g., 1.65V or raw value ~2048) // Assuming raw 12-bit ADC values (0 - 4095)
@@ -401,7 +437,23 @@ sensor:
       if (angle_deg >= 360.0f) angle_deg -= 360.0f;
       if (angle_deg < 0.0f) angle_deg += 360.0f;
 
-      return angle_deg;
+      float new_angle = angle_deg;  // berechneter Winkel
+
+      // Zirkuläre Differenz zum letzten Wert
+      float last = id(wind_direction_degrees).state;
+      if (isnan(last)) return new_angle;
+
+      float diff = fabs(new_angle - last);
+      if (diff > 180.0f) diff = 360.0f - diff;
+
+      // skip edge over > 90° 
+      const float skip_angle = 90.0f; 
+      if (diff > skip_angle) {
+        return last;   // keep previous value
+      }
+      return new_angle;
+      
+      //return angle_deg;
   
     on_value:
       then:
@@ -557,7 +609,26 @@ sensor:
             format: "Battery Spannung (berechnet): %.3f V"
             args: ['x']
             level: INFO
-
+        
+        ## Kein Akku → Warnung
+        - if:
+            condition:
+              lambda: 'return id(battery_voltage_raw).state == 0.0f;'
+            then:
+              - logger.log:
+                  format: "⚠️ Keine Akkus eingelegt – CN3085 Leerlauf!"
+                  level: WARN
+        ## Batterien (nicht wiederaufladbar) erkannt
+        ## untested yet
+     #   - if:
+     #       condition:
+     #         lambda: |-
+     #           float v = id(battery_voltage_raw).state;
+      #          return (v > 1.55f * 3 && v < 4.35f);  // >4,65V wäre Alkaline voll
+      #      then:
+      #        - logger.log:
+      #            format: "⚠️ Achtung: Möglicherweise nicht-wiederaufladbare Batterien!"
+      #            level: WARN
 #    filters:
 #      - lambda: |-
 #          // raw: true → x ist 0–4095
@@ -569,7 +640,6 @@ sensor:
 #          float v_adc = (x / adc_max) * adc_ref;
 #          if (v_adc < vce_sat) return 0.0;
 #          return (v_adc - vce_sat) * (r1 + r2) / r2 + vce_sat;
-    
     filters:
       - calibrate_linear: 
            method: least_squares
@@ -579,13 +649,34 @@ sensor:
           
          
       - lambda: |-
-          const float vce_sat = 0.30;   // V, Sättigungsspannung EMD22
+          const float vce_sat = 0.30f;   // V, Sättigungsspannung EMD22
           const float r1 = 56000.0;     // Ohm  R11
           const float r2 = 100000.0;    // Ohm  R12
+          const float V_NO_BAT_LOW  = 4.34f;  // CN3085 Leerlauf beginnt hier
+          const float V_NO_BAT_HIGH = 4.45f;  // CN3085 Leerlauf endet hier
+          
           //const float cal = 1.0638;      // ADC correction
           //float x_cal = x * cal;
-          if (x < vce_sat) return 0.0;
-          return (x - vce_sat) * (r1 + r2) / r2 + vce_sat;
+          if (x < vce_sat) return 0.0f;
+
+          // Eingangsspannung berechnen
+          float v_in = (x - vce_sat) * (r1 + r2) / r2 + vce_sat;
+
+          // Leerlauf-Erkennung:
+          // - Nur wenn NICHT geladen wird
+          // - UND Spannung im Leerlauf-Bereich
+          if (v_in >= V_NO_BAT_LOW && v_in <= V_NO_BAT_HIGH) {
+            if (id(charge_detection).state) {
+              // Laden aktiv → echte Spannung zurückgeben, kein Leerlauf
+              return v_in;
+            } else {
+              // Kein Laden → CN3085 Leerlauf → kein Akku
+              return 0.0f;
+            }
+          }
+
+          return v_in;
+          //return (x - vce_sat) * (r1 + r2) / r2 + vce_sat;
       
 ## SUB: ----- SOLAR PANEL VOLTAGE ------
 ## maximum @8V with full sunlight, voltage divider 56k and 100k
@@ -703,14 +794,17 @@ sensor:
             alpha: 0.1
             send_every: 1
 
-## ------ Wind as text sensor
+
 text_sensor:
+  
+  ## ------ Wind as text sensor
   - platform: template
     name: "Wind.Direction"
     icon: 'mdi:windsock'
     id: wind_direction_text
     update_interval: never
-    
+
+  ## ------- Wifi stats --------
   - platform: wifi_info
     ip_address:
       name: "WiFi.ip"
@@ -719,6 +813,43 @@ text_sensor:
     scan_results:
       name: "WiFi.networks"
 
+   ## -------- Battery status ----- 
+  - platform: template
+    name: "Battery.status"
+    id: battery_status_text
+    icon: "mdi:battery"
+    update_interval: never   ## will be updated by binary_sensor
+    lambda: |-
+      float v = id(battery_voltage_raw).state;
+      bool present = id(battery_present_state);
+      const float BAT_FULL = 80.0f;
+      const float BAT_WEAK = 20.0f;
+      
+      if (isnan(v) || !present) return {"⚠️ Kein Akku eingelegt"};
+
+      // Alkaline Batterien erkennen:
+      // Frische AA Alkaline = 1,5V × 3 = 4,5V
+      // NiMH voll           = 1,45V × 3 = 4,35V
+      // → Über 4,36V mit Akku eingelegt = wahrscheinlich Alkaline
+      if (v > 4.36f) return {"🔴 Achtung: Batterien statt Akkus!"};
+
+      // NiMH Ladestand (3,6V leer – 4,35V voll)
+      float pct = (v - 3.6f) / (4.35f - 3.6f) * 100.0f;
+      if (pct < 0.0f)   pct = 0.0f;
+      if (pct > 100.0f) pct = 100.0f;
+
+      char buf[48];
+      if (id(charge_detection).state) {
+        snprintf(buf, sizeof(buf), "⚡ Lädt "); //– %.0f%% (%.2fV)", pct, v);
+      } else if (pct >= BAT_FULL) {
+        snprintf(buf, sizeof(buf), "🔋 Voll – %.0f%% (%.2fV)", pct, v);
+      } else if (pct >= BAT_WEAK) {
+        snprintf(buf, sizeof(buf), "🔋 OK – %.0f%% (%.2fV)", pct, v);
+      } else {
+        snprintf(buf, sizeof(buf), "🪫 Schwach – %.0f%% (%.2fV)", pct, v);
+      }
+      return {buf};
+      
   ## barometric pressure change per hour in hPa
 ## ------ Barometric Pressure ------------
 #+1–2 hPa/h	Wetter bessert sich langsam
@@ -794,7 +925,9 @@ text_sensor:
       if (delta > -0.5f) return {"🌧 Tiefdrucklage, anhaltend"};
       return {"⛈ Schlechtwetter – Sturm möglich"};
 ## Toggle wifi between openThread
+
 binary_sensor:
+  ## ---- USER BUTTON -----
   - platform: gpio
     pin: GPIO9 ## BOOT , strapping pin esp32c6
     name: "WiFi.Control Button"
@@ -832,13 +965,28 @@ binary_sensor:
   - platform: gpio
     pin: 
       number: GPIO1
-      inverted: false  ## Charge det is high active
+      inverted: true  ## Charge det is low active
       mode:
         input: true
         pullup: false ## ATTENTION: must be FALSE, not to conflict with external electronics.
     name: "Battery.Charge in progress"
+    id: charge_detection
+    internal: false
     icon: "mdi:solar-power"
 
+    ## SUB: ---- Battery present ------
+  - platform: template
+    name: "Battery.present"
+    id: battery_present
+    device_class: plug
+    lambda: |-
+      return id(battery_present_state);
+    
+    
 ## SUB: -------- Wifi STATUS --------
 #  - platform: status
 #    name: "WiFi.status"
+
+
+
+
