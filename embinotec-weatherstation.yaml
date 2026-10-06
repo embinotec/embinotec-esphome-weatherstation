@@ -1,6 +1,6 @@
 ## embinotec develops smart home devices to fit the "made for esphome"
 ## this weatherstation could be purchased at https://www.embinotec.de/shop
-## this yaml file is designed for hardware rev1.3
+## this yaml file is designed for hardware rev1.4
 
 
 ## How to use this configuration file:
@@ -33,7 +33,7 @@
 substitutions:
   devicename: "embinotec-weatherstation"
   friendly_devicename: "Embinotec WeatherStation"
-  device_description: "WeatherStation with 7 sensors."
+  device_description: "WeatherStation with 8 sensors."
 
 
 ## ------ ESPHome HEADER -------
@@ -143,7 +143,7 @@ wifi:
   ## Enable fallback hotspot (captive portal) in case wifi connection fails
   ## SECTION: CAPTIVE PORTAL must be active
   ap:
-    ssid: "Weatherstation CaptivePortal"
+    ssid: "embinotec-Weatherstation"
     password: !secret fallback_pw
     ap_timeout: 1min # Change time here
 
