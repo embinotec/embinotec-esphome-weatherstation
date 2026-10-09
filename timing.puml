@@ -1,0 +1,28 @@
+@startuml
+robust "deep sleep" as ds
+rectangle "Interval 30s" as i30s
+
+
+@0
+i30s is idle
+ds is active
+
+@30
+i30s is active
+
+@60
+ds is sleep
+i30s is idle
+
+@300
+ds is active
+i30s is active
+
+@330
+i30s is idle
+@360
+ds is sleep
+i30s is active
+
+
+@enduml

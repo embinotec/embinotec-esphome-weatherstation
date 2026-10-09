@@ -1,5 +1,12 @@
 # embinotec WeatherStation
 
+[![CI](https://github.com/embinotec/weatherstation/actions/workflows/ci.yml/badge.svg)](https://github.com/embinotec/weatherstation/actions/workflows/ci.yml)
+[![Made for ESPHome](https://img.shields.io/badge/Made%20for-ESPHome-blue?logo=esphome)](https://esphome.io/guides/made_for_esphome/)
+[![ESPHome Version](https://img.shields.io/badge/ESPHome-%E2%89%A52026.8.0-green)](https://esphome.io/changelog/)
+[![License](https://img.shields.io/github/license/embinotec/weatherstation)](LICENSE)
+
+![Made for ESPHome](https://esphome.io/images/made-for-esphome-black-on-white.svg)
+
 ESPHome-basierte Wetterstation auf Basis eines ESP32-C6, konform zu den "Made for ESPHome"-Anforderungen. Die Station misst Windgeschwindigkeit, Windrichtung, Niederschlag, Außentemperatur/-feuchte, Helligkeit/Spektrum, barometrischer Druck sowie den eigenen Lade- und Betriebszustand (Solar/Akku) und stellt alle Werte über die ESPHome-API in Home Assistant bereit.
 
 ## Funktionsumfang
@@ -10,12 +17,13 @@ ESPHome-basierte Wetterstation auf Basis eines ESP32-C6, konform zu den "Made fo
 | Windrichtung | 2× ADC (Potentiometer-Paar), Winkel via `atan2` | ° |
 | Niederschlagsrate | Wippen-Regenmesser (Pulse Counter) | mm/h |
 | Niederschlagssumme | Wippen-Regenmesser (Total) | mm |
-| Außentemperatur / -feuchte | SHTC3 (I²C) | °C / % |
-| UV-Index / Beleuchtungsstärke | SI1133 (I²C, externe Komponente) | – / lx |
+| Außentemperatur / -feuchte | SHTC3 (i2c) | °C / % |
+| Licht / Beleuchtungsstärke | tsl2591 (i2c) | – / lx |
 | Akkuspannung | ADC über Spannungsteiler | V |
 | Solarpanel-Spannung | ADC über Spannungsteiler | V |
 | WLAN-Signalstärke | ESPHome intern | dBm |
 | Ladevorgang aktiv | GPIO (Binary Sensor) | – |
+| Barrometrischer druck | BMP5580 (i2c) | Oa|
 
 ## Hardware
 
@@ -43,6 +51,14 @@ ESPHome-basierte Wetterstation auf Basis eines ESP32-C6, konform zu den "Made fo
 | GPIO23 | Spannungsteiler Akku aktivieren (intern) |
 
 Weitere Pinout-Referenzen (ESP32-S3-DevKitC-1, ESP32-C6 SuperMini) sind als Kommentare direkt in der YAML-Datei hinterlegt.
+
+## Diagramme
+
+```plantuml {include} timing.puml
+```
+
+
+
 
 ## Voraussetzungen
 
@@ -98,6 +114,8 @@ Der Debounce des Reed-Kontakts läuft aktuell ausschließlich über `internal_fi
 - [ ] Einheit/Filter der Windgeschwindigkeit vereinheitlichen (m/s vs. mph, siehe oben)
 - [ ] Reed-Kontakt-Entprellung ggf. per Hardware (RC-Glied) oder Software (`binary_sensor` + `delayed_on_off`) ergänzen
 - [ ] Lizenz für dieses Repository ist noch nicht festgelegt
+
+
 
 ## Lizenz
 
