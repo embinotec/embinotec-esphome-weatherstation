@@ -119,4 +119,8 @@ Der Debounce des Reed-Kontakts läuft aktuell ausschließlich über `internal_fi
 
 ## Lizenz
 
-Noch nicht festgelegt.
+Die Firmware-Konfiguration steht unter der
+[Apache License 2.0](LICENSE).
+
+Die Hardware (Schaltpläne, PCB-Layouts) steht unter
+[CERN Open Hardware Licence v2 - Permissive (CERN-OHL-P)](https://ohwr.org/cern_ohl_p_v2.txt).
