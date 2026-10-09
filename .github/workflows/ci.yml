@@ -96,7 +96,7 @@ jobs:
           cat > secrets.yaml << 'EOF'
           wifi_ssid: "CI_SSID"
           wifi_password: "CI_PASSWORD"
-          encryption_key: "CI_KEY_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+          encryption_key: "dGhpcyBpcyBhIHRlc3Qga2V5IGZvciBDSSBvbmx5ISE="
           ota_password: "CI_OTA_PASSWORD"
           fallback_pw: "CI_FALLBACK_PW"
           EOF
