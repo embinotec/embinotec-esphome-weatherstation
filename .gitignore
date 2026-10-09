@@ -1,0 +1,10 @@
+# project 
+
+# IDE
+
+
+# eshome files
+
+secrets.yaml
+.esphome/
+__pycache__/
