@@ -23,7 +23,7 @@ ESPHome-basierte Wetterstation auf Basis eines ESP32-C6, konform zu den "Made fo
 | Solarpanel-Spannung | ADC über Spannungsteiler | V |
 | WLAN-Signalstärke | ESPHome intern | dBm |
 | Ladevorgang aktiv | GPIO (Binary Sensor) | – |
-| Barrometrischer druck | BMP5580 (i2c) | Oa|
+| Barrometrischer druck | BMP580 (i2c) | Pa|
 
 ## Hardware
 
@@ -54,10 +54,7 @@ Weitere Pinout-Referenzen (ESP32-S3-DevKitC-1, ESP32-C6 SuperMini) sind als Komm
 
 ## Diagramme
 
-```plantuml {include} timing.puml
-```
-
-
+<!-- ![Diagram Image Link](timing.puml -->
 
 
 ## Voraussetzungen
@@ -124,3 +121,7 @@ Die Firmware-Konfiguration steht unter der
 
 Die Hardware (Schaltpläne, PCB-Layouts) steht unter
 [CERN Open Hardware Licence v2 - Permissive (CERN-OHL-P)](https://ohwr.org/cern_ohl_p_v2.txt).
+
+## Contributions
+
+See [CONTRIBUTE](CONTRIBUTE).

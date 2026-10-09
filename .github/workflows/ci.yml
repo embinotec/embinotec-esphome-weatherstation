@@ -19,6 +19,31 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  
+# -------------------------------------------------------
+  # Job: PlantUML-Diagramme in README.md einbetten
+  # -------------------------------------------------------
+  puml-markdown:
+    name: "📊 Embed PlantUML in README"
+    runs-on: ubuntu-latest        
+    needs: validate               
+    permissions:
+      contents: write             
+    steps:
+      - name: ⬇️ Checkout
+        uses: actions/checkout@v4 
+        with:
+          fetch-depth: 0           
+
+      - name: 📊 PlantUML in Markdown einbetten
+        uses: alessandro-marcantoni/puml-markdown@v0.1.1
+
+      - name: 💾 Geänderte README zurück committen
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "docs: update PlantUML diagrams in README [skip ci]"
+          file_pattern: "*.md"
+  
   validate:
     name: "✅ Validate YAML"
     runs-on: ubuntu-latest
@@ -78,6 +103,9 @@ jobs:
 
       - name: ✅ YAML validieren
         run: esphome config embinotec-weatherstation.yaml
+
+   
+  
 
   compile:
     name: "🔨 Compile Firmware"
