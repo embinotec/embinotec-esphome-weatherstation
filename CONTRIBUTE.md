@@ -203,7 +203,14 @@ Schaltpläne und PCB-Layouts stehen unter **CERN-OHL-P v2**.
 ```
 
 4. **Committe mit aussagekräftiger Nachricht**:
-5. 5. **Öffne den Pull Request** gegen `main` mit:
+   fix: correct battery voltage calibration factor for R1=56k/R2=100k
+
+The calibrate_linear datapoints were swapped, causing 0.3V output
+when no battery was present. Corrected the Rohwert → actual voltage
+mapping based on multimeter measurements.
+
+Fixes #42
+5.  **Öffne den Pull Request** gegen `main` mit:
    - Beschreibung **was** geändert wurde und **warum**
    - Hinweis ob Hardware-Tests durchgeführt wurden
    - Messwerte vor/nach der Änderung (bei Kalibrierungsänderungen)

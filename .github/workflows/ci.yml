@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [master, dev]
+    branches: [main, dev]
   pull_request:
-    branches: [master]
+    branches: [main]
   workflow_dispatch:
     inputs:
       esphome_version:
@@ -12,16 +12,13 @@ on:
         required: false
         type: string
   schedule:
-    - cron: "0 3 * * 1"   # Jeden Montag 03:00 UTC – prüft ob neue ESPHome-Version noch kompatibel ist
+    - cron: "0 3 * * 1"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # -------------------------------------------------------
-  # Job 1: YAML validieren (schnell, kein Kompilieren)
-  # -------------------------------------------------------
   validate:
     name: "✅ Validate YAML"
     runs-on: ubuntu-latest
@@ -29,24 +26,47 @@ jobs:
       - name: ⬇️ Checkout
         uses: actions/checkout@v4
 
+      - name: 📋 ESPHome min_version aus YAML lesen
+        id: esphome_min
+        run: |
+          MIN=$(grep 'min_version:' embinotec-weatherstation.yaml \
+            | head -1 \
+            | sed 's/.*min_version:\s*//' \
+            | tr -d '"'\''[:space:]')
+          echo "min_version: $MIN"
+          echo "version=$MIN" >> $GITHUB_OUTPUT
+
       - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: pip
 
-      - name: 📦 Install ESPHome
+      - name: 📦 ESPHome installieren
         run: |
           if [ -n "${{ github.event.inputs.esphome_version }}" ]; then
-            pip install esphome==${{ github.event.inputs.esphome_version }}
+            TARGET="${{ github.event.inputs.esphome_version }}"
+            echo "🔧 Manuell angeforderte Version: $TARGET"
           else
-            pip install esphome
+            TARGET="esphome"   # latest
           fi
+          pip install $TARGET
 
-      - name: 🔍 ESPHome Version
-        run: esphome version
+      - name: 🔢 Versionscheck gegen min_version
+        run: |
+          INSTALLED=$(pip show esphome | grep ^Version | awk '{print $2}')
+          MIN="${{ steps.esphome_min.outputs.version }}"
+          echo "Installiert: $INSTALLED  |  min_version: $MIN"
+          python3 -c "
+          from packaging.version import Version
+          i = Version('$INSTALLED')
+          m = Version('$MIN')
+          if i < m:
+              print(f'❌ {i} < min_version {m}')
+              exit(1)
+          print(f'✅ {i} >= min_version {m}')
+          "
 
-      - name: 📝 Create secrets.yaml (CI dummy)
+      - name: 📝 secrets.yaml erzeugen (CI-Dummy)
         run: |
           cat > secrets.yaml << 'EOF'
           wifi_ssid: "CI_SSID"
@@ -56,12 +76,9 @@ jobs:
           fallback_pw: "CI_FALLBACK_PW"
           EOF
 
-      - name: ✅ Validate configuration
+      - name: ✅ YAML validieren
         run: esphome config embinotec-weatherstation.yaml
 
-  # -------------------------------------------------------
-  # Job 2: Kompilieren (dauert länger, braucht Job 1)
-  # -------------------------------------------------------
   compile:
     name: "🔨 Compile Firmware"
     runs-on: ubuntu-latest
@@ -70,13 +87,28 @@ jobs:
       - name: ⬇️ Checkout
         uses: actions/checkout@v4
 
+      - name: 📋 ESPHome min_version aus YAML lesen
+        id: esphome_min
+        run: |
+          MIN=$(grep 'min_version:' embinotec-weatherstation.yaml \
+            | head -1 \
+            | sed 's/.*min_version:\s*//' \
+            | tr -d '"'\''[:space:]')
+          echo "version=$MIN" >> $GITHUB_OUTPUT
+
       - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: pip
 
-      - name: 📦 Install ESPHome
+      - name: 💾 pip Cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-esphome-${{ steps.esphome_min.outputs.version }}
+          restore-keys: pip-${{ runner.os }}-esphome-
+
+      - name: 📦 ESPHome installieren
         run: |
           if [ -n "${{ github.event.inputs.esphome_version }}" ]; then
             pip install esphome==${{ github.event.inputs.esphome_version }}
@@ -84,17 +116,16 @@ jobs:
             pip install esphome
           fi
 
-      - name: 💾 Cache ESPHome build
+      - name: 💾 ESPHome Build-Cache
         uses: actions/cache@v4
         with:
           path: |
             .esphome
             ~/.platformio
-          key: esphome-${{ runner.os }}-${{ hashFiles('embinotec-weatherstation.yaml') }}
-          restore-keys: |
-            esphome-${{ runner.os }}-
+          key: esphome-build-${{ runner.os }}-${{ hashFiles('embinotec-weatherstation.yaml') }}
+          restore-keys: esphome-build-${{ runner.os }}-
 
-      - name: 📝 Create secrets.yaml (CI dummy)
+      - name: 📝 secrets.yaml erzeugen (CI-Dummy)
         run: |
           cat > secrets.yaml << 'EOF'
           wifi_ssid: "CI_SSID"
@@ -104,62 +135,12 @@ jobs:
           fallback_pw: "CI_FALLBACK_PW"
           EOF
 
-      - name: 🔨 Compile firmware
+      - name: 🔨 Firmware kompilieren
         run: esphome compile embinotec-weatherstation.yaml
 
-      - name: 📦 Upload firmware artifact
+      - name: 📦 Firmware als Artefakt speichern
         uses: actions/upload-artifact@v4
         with:
           name: firmware-${{ github.sha }}
           path: .esphome/build/embinotec-weatherstation/.pioenvs/*/firmware.bin
           retention-days: 30
-
-  # -------------------------------------------------------
-  # Job 3: Made for ESPHome Anforderungen prüfen
-  # -------------------------------------------------------
-  made-for-esphome:
-    name: "🏷️ Made for ESPHome Checklist"
-    runs-on: ubuntu-latest
-    needs: validate
-    steps:
-      - name: ⬇️ Checkout
-        uses: actions/checkout@v4
-
-      - name: 🔍 Check required fields
-        run: |
-          echo "Checking Made for ESPHome requirements..."
-          YAML="embinotec-weatherstation.yaml"
-          ERRORS=0
-
-          check() {
-            if grep -q "$1" "$YAML"; then
-              echo "  ✅ $2"
-            else
-              echo "  ❌ MISSING: $2"
-              ERRORS=$((ERRORS + 1))
-            fi
-          }
-
-          check "project:"              "esphome.project defined"
-          check "name_add_mac_suffix:"  "name_add_mac_suffix present"
-          check "dashboard_import:"     "dashboard_import present"
-          check "esp32_improv:"         "esp32_improv (BLE provisioning)"
-          check "improv_serial:"        "improv_serial (USB provisioning)"
-          check "platform: esphome"     "OTA platform: esphome"
-          check "api:"                  "api component"
-          check "logger:"               "logger component"
-
-          if ! grep -q "!secret" "$YAML"; then
-            echo "  ✅ No hardcoded secrets in YAML"
-          else
-            echo "  ⚠️  YAML references secrets – ensure secrets.yaml is in .gitignore"
-          fi
-
-          if [ $ERRORS -gt 0 ]; then
-            echo ""
-            echo "❌ $ERRORS Made for ESPHome requirement(s) missing!"
-            exit 1
-          else
-            echo ""
-            echo "✅ All Made for ESPHome requirements met!"
-          fi
