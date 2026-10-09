@@ -1,11 +1,11 @@
 # embinotec WeatherStation
-
-[![CI](https://github.com/embinotec/weatherstation/actions/workflows/ci.yml/badge.svg)](https://github.com/embinotec/weatherstation/actions/workflows/ci.yml)
+[![CI](https://github.com/embinotec/embinotec-esphome-weatherstation/actions/workflows/ci.yml/badge.svg)](https://github.com/embinotec/embinotec-esphome-weatherstation/actions/workflows/ci.yml)
 [![Made for ESPHome](https://img.shields.io/badge/Made%20for-ESPHome-blue?logo=esphome)](https://esphome.io/guides/made_for_esphome/)
 [![ESPHome Version](https://img.shields.io/badge/ESPHome-%E2%89%A52026.8.0-green)](https://esphome.io/changelog/)
 [![License](https://img.shields.io/github/license/embinotec/weatherstation)](LICENSE)
 
 ![Made for ESPHome](https://esphome.io/images/made-for-esphome-black-on-white.svg)
+
 
 ESPHome-basierte Wetterstation auf Basis eines ESP32-C6, konform zu den "Made for ESPHome"-Anforderungen. Die Station misst Windgeschwindigkeit, Windrichtung, Niederschlag, Außentemperatur/-feuchte, Helligkeit/Spektrum, barometrischer Druck sowie den eigenen Lade- und Betriebszustand (Solar/Akku) und stellt alle Werte über die ESPHome-API in Home Assistant bereit.
 
