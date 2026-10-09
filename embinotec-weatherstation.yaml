@@ -17,9 +17,9 @@
 ## Solar-V     IO5  | 4               29 | IO15
 ##  LP_I2C.SDA IO6  | 5               28 | IO23 en.battery-v
 ##  LP_I2C.SCL IO7  | 6               27 | IO22 en.solar-v
-## Status LED  IO0  | 7               26 | IO21 Int.UV
-## CHRG stat   IO1  | 8               25 | IO20 
-## Solar stat  IO8  | 9               24 | IO19
+## Status LED  IO0  | 7               26 | IO21 Int.Light
+## CHRG-V      IO1  | 8               25 | IO20 
+## Solar-V     IO8  | 9               24 | IO19
 ## Rain-gauge IO10  | 10              23 | IO18
 ## Wind-speed IO11  | 11              22 | IO9  BOOT/USER-BTN
 ## Wind-DirR   IO2  | 12              21 | GND

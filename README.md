@@ -44,9 +44,13 @@ ESPHome-basierte Wetterstation auf Basis eines ESP32-C6, konform zu den "Made fo
 | GPIO5 | Solarpanel-Spannung (ADC) |
 | GPIO6 | I²C SDA |
 | GPIO7 | I²C SCL |
+| GPIO8 | Solar-spannung |
 | GPIO9 | Boot-/User-Taste (WLAN ein/aus) |
 | GPIO10 | Regenmesser (Pulse Counter) |
 | GPIO11 | Windgeschwindigkeit (Pulse Counter) |
+| GPIO12 | USB D- |
+| GPIO13 | USB D+ |
+| GPIO21 | Interrupt Lichtmessung |
 | GPIO22 | Spannungsteiler Solar aktivieren (intern) |
 | GPIO23 | Spannungsteiler Akku aktivieren (intern) |
 
