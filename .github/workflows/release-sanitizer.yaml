@@ -1,0 +1,72 @@
+name: Release (bereinigte YAML)
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  sanitize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Secrets und Passwörter durch Platzhalter ersetzen
+        run: |
+          mkdir -p dist
+          python3 - <<'EOF'
+          import re, pathlib, shutil
+
+          src = pathlib.Path(".")
+          out = pathlib.Path("dist")
+          skip = {"secrets.yaml", "secrets.yml"}
+
+          secret_re = re.compile(r'!secret\s+([A-Za-z0-9_\-]+)')
+          lit_re = re.compile(
+              r'^(\s*)(password|passphrase|key)(\s*:\s*)(?!"«)(?!!)(?!\$)(\S.*?)(\s+#.*)?$'
+          )
+
+          for f in src.rglob("*.y*ml"):
+              if f.name in skip or any(p in f.parts for p in (".git", ".github", "dist", ".esphome")):
+                  continue
+              lines = f.read_text(encoding="utf-8").splitlines()
+              res, prev = [], ""
+              for line in lines:
+                  line = secret_re.sub(lambda m: f'"«{m.group(1)}»"', line)
+                  m = lit_re.match(line)
+                  if m:
+                      indent, key, sep, _, comment = m.groups()
+                      if key == "key":
+                          # nur api -> encryption -> key
+                          if prev != "encryption:":
+                              res.append(line); prev = line.strip(); continue
+                          name = "API_KEY"
+                      else:
+                          name = "PASSWORD"
+                      line = f'{indent}{key}{sep}"«{name}»"{comment or ""}'
+                  res.append(line)
+                  if line.strip():
+                      prev = line.strip()
+              target = out / f
+              target.parent.mkdir(parents=True, exist_ok=True)
+              target.write_text("\n".join(res) + "\n", encoding="utf-8")
+          EOF
+
+      - name: Prüfen, dass nichts Sensibles übrig ist
+        run: |
+          if grep -rnE '!secret|^\s*(password|passphrase)\s*:\s*[^"$ ]' dist; then
+            echo "Es sind noch Secrets oder Passwörter enthalten."
+            exit 1
+          fi
+
+      - name: ZIP erstellen und ans Release hängen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd dist
+          zip -r "../esphome-${{ github.event.release.tag_name }}.zip" .
+          cd ..
+          gh release upload "${{ github.event.release.tag_name }}" \
+            "esphome-${{ github.event.release.tag_name }}.zip" --clobber
