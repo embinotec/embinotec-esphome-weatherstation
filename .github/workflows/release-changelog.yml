@@ -1,0 +1,52 @@
+name: Release (Changelog)
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.release.tag_name }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: towncrier installieren
+        run: pip install towncrier
+
+      - name: Release-Notes erzeugen (ohne Dateien zu ändern)
+        run: |
+          VERSION="${TAG#v}"
+          towncrier build --draft --version "$VERSION" \
+            --config towncrier.toml > release_notes.md
+          cat release_notes.md
+
+      - name: Release-Notes ins GitHub-Release schreiben
+        run: gh release edit "$TAG" --notes-file release_notes.md
+
+      - name: CHANGELOG schreiben und Fragmente entfernen
+        run: |
+          VERSION="${TAG#v}"
+          towncrier build --yes --version "$VERSION" \
+            --config towncrier.toml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Keine Änderungen, nichts zu committen."
+          else
+            git commit -m "Changelog für ${TAG}"
+            git push
+          fi
