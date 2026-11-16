@@ -34,7 +34,7 @@ jobs:
               lines = f.read_text(encoding="utf-8").splitlines()
               res, prev = [], ""
               for line in lines:
-                  line = secret_re.sub(lambda m: f'"«{m.group(1)}»"', line)
+                  line = secret_re.sub(lambda m: f'"<{m.group(1)}>"', line)
                   m = lit_re.match(line)
                   if m:
                       indent, key, sep, _, comment = m.groups()
@@ -45,7 +45,7 @@ jobs:
                           name = "API_KEY"
                       else:
                           name = "PASSWORD"
-                      line = f'{indent}{key}{sep}"«{name}»"{comment or ""}'
+                      line = f'{indent}{key}{sep}"<{name}>"{comment or ""}'
                   res.append(line)
                   if line.strip():
                       prev = line.strip()
@@ -66,7 +66,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           cd dist
-          zip -r "../esphome-${{ github.event.release.tag_name }}.zip" .
+          zip -r "../${{github.repository}}-${{ github.event.release.tag_name}}.zip" .
           cd ..
-          gh release upload "${{ github.event.release.tag_name }}" \
-            "esphome-${{ github.event.release.tag_name }}.zip" --clobber
+          gh release upload "${{github.event.release.tag_name}}" \
+            "${{github.repository}}-${{github.event.release.tag_name}}.zip" --clobber
