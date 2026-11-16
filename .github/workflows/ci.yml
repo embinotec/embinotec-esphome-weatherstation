@@ -50,7 +50,6 @@ jobs:
     steps:
       - name: ⬇️ Checkout
         uses: actions/checkout@v4
-
       - name: 📋 ESPHome min_version aus YAML lesen
         id: esphome_min
         run: |
@@ -76,20 +75,29 @@ jobs:
           fi
           pip install $TARGET
 
-      - name: 🔢 Versionscheck gegen min_version
+      - name: 🔢 Check ESPHome version
         run: |
+          MIN="2026.8.0"
           INSTALLED=$(pip show esphome | grep ^Version | awk '{print $2}')
-          MIN="${{ steps.esphome_min.outputs.version }}"
-          echo "Installiert: $INSTALLED  |  min_version: $MIN"
-          python3 -c "
-          from packaging.version import Version
-          i = Version('$INSTALLED')
-          m = Version('$MIN')
-          if i < m:
-              print(f'❌ {i} < min_version {m}')
-              exit(1)
-          print(f'✅ {i} >= min_version {m}')
-          "
+          echo "Installiert: $INSTALLED | min_version: $MIN"
+          if [ "$(printf '%s\n' "$MIN" "$INSTALLED" | sort -V | head -n1)" != "$MIN" ]; then
+            echo "ESPHome $INSTALLED ist älter als $MIN"; exit 1
+          fi
+
+    #  - name: 🔢 Versionscheck gegen min_version
+    #    run: |
+    #      INSTALLED=$(pip show esphome | grep ^Version | awk '{print $2}')
+    #      MIN="${{ steps.esphome_min.outputs.version }}"
+    #      echo "Installiert: $INSTALLED  |  min_version: $MIN"
+         # python3 -c "
+         # from packaging.version import Version
+         # i = Version('$INSTALLED')
+         # m = Version('$MIN')
+         # if i < m:
+         #     print(f'❌ {i} < min_version {m}')
+         #     exit(1)
+         # print(f'✅ {i} >= min_version {m}')
+         # "
 
       - name: 📝 secrets.yaml erzeugen (CI-Dummy)
         run: |
