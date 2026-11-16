@@ -1,0 +1,72 @@
+## Towncrier newsfeed to create proper changelogs
+
+[tool.towncrier]
+directory = ".doc/"
+## Where you want your news files to come out, `NEWS.rst` is the default.
+## This can be .rst or .md, towncrier's default template works with both.
+filename = "CHANGELOG.md"
+
+## Version if it is not used in towncrier build --version="v0.0.1" command
+#version = "v0.0.1"
+
+## NONE Python project use name, else use package
+name = "embinotec-esphome-weatherstation"
+
+## The name of your Python package
+#package = "myproject"
+
+## The path to your Python package.
+## If your package lives in 'src/myproject/', it must be 'src',
+## but if you don't keep your code in a 'src' dir, remove the
+## config option
+#package_dir = "src"
+
+## Using a template
+#tempalte =""
+## Everything documentation above this string is being ignored.
+start_string = "<!-- towncrier release notes start -->\n"
+## used underlines to format correct headlines
+underlines = ["=", "-", "~"]    # rst underlines
+#underlines = ["", "", ""]    # md underlines
+
+title_format = "## [{version}](https://gitlab.com/embinotec/embinotec-esphome-weatherstation) - {project_date}"
+issue_format = "[#{issue}](https://gitlab.com/embinotec/embinotec-esphome-weatherstation/issues/{issue})"
+
+## Boolean value indicating whether to warp news fragments to a line length of 79 characters.
+wrap = false
+## Boolean value indication whether the template uses bullets for each news fragment.
+all_bullets = true
+## Boolean value indicating whether to write all news fragments to a single file.
+single_file = true
+## The prefix used for orphaned news fragments. "+" by default.
+orphan_prefix = "+"
+
+[[tool.towncrier.type]]
+directory = "security"
+name = "Security"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "rm"
+name = "Removed"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "dep"
+name = "Deprecated"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "add"
+name = "Added"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "chg"
+name = "Changed"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "fixed"
+name = "Fixed"
+showcontent = true
