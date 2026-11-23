@@ -1,0 +1,111 @@
+name: Changelog-Fragment check
+
+##A pull request may only be merged if a newly added `towncrier` fragment exists 
+## for every linked issue—for example, `.doc/123.feature.md`.
+
+## To ensure that the merge is effectively blocked, the job must be configured in GitHub 
+## as a "required status check" within the branch protection settings for the `main` branch 
+## (Settings -> Branches -> Branch protection rule -> Require status checks).
+
+on:
+  pull_request:
+    # edited/labeled/unlabeled: The review process restarts if the PR text or labels are changed.
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  towncrier-fragment:
+    name: Towncrier-Fragment does exist
+    runs-on: ubuntu-latest
+    env:
+      ## An towncrier.toml anpassen (directory und [[tool.towncrier.type]])
+      FRAGMENT_DIR: .doc
+      FRAGMENT_TYPES: security|rm|dep|add|chg|fixed #|feature|bugfix|doc|removal|misc
+      ## This label on a PR skips the check (e.g., for CI-only changes).
+      SKIP_LABEL: no-changelog
+
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fragment match issue
+        env:
+          ## Load PR texts exclusively via environment variables; never embed them directly into the script.
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          HEAD_REF: ${{ github.head_ref }}
+          BASE_REF: ${{ github.base_ref }}
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: |
+          set -euo pipefail
+
+          ## --- Exception per Label ---
+          case ",${PR_LABELS}," in
+            *",${SKIP_LABEL},"*)
+              echo "Label '${SKIP_LABEL}' is set, the fragment check will be skipped."
+              exit 0
+              ;;
+          esac
+
+          ## --- 1) Get issue number ---
+          ## a) Keyword search in PR title/body: "Closes #12", "Fixes: #12", "Resolves #12"
+          closing_keyword_pattern='(close[sd]?|fix(e[sd])?|resolve[sd]?)[[:space:]]*:?[[:space:]]+#[0-9]+'
+          issue_numbers="$(printf '%s\n%s\n' "$PR_TITLE" "$PR_BODY" \
+            | grep -oiE "$closing_keyword_pattern" \
+            | grep -oE '[0-9]+' || true)"
+
+          ## b) Branch-Name with leading number: "12-display-fix", "fix/12-display", "issue-12"
+          if [[ "$HEAD_REF" =~ ^([A-Za-z]+[/_-])?([0-9]+) ]]; then
+            issue_numbers="${issue_numbers}"$'\n'"${BASH_REMATCH[2]}"
+          fi
+
+          issue_numbers="$(printf '%s\n' "$issue_numbers" | grep -E '^[0-9]+$' | sort -un || true)"
+
+          if [ -z "$issue_numbers" ]; then
+            echo "::error::No issue found. Connected the issue in the PR text (e.g., 'Closes #12'), name the branch '12-short-description' or set the label '${SKIP_LABEL}'."
+            exit 1
+          fi
+          echo "Connected issues: $(echo "$issue_numbers" | tr '\n' ' ')"
+
+          ## --- 2) In this PR newly added fragments ---
+          ## Only status "A" (added): subsequently modified old fragments do not count.
+          added_files="$(git diff --name-only --diff-filter=A "origin/${BASE_REF}...HEAD" -- "$FRAGMENT_DIR" || true)"
+
+          ## --- 3) For each issue, a non-empty fragment must exist ---
+          ## Filename according to towncrier: <issue>.<type>[.<counter>][.<extension>], e.g., 12.feature.md
+          missing_issues=""
+          for issue_number in $issue_numbers; do
+            fragment_pattern="^${FRAGMENT_DIR}/${issue_number}\.(${FRAGMENT_TYPES})(\.[0-9]+)?(\.[A-Za-z]+)?$"
+            fragment_found="false"
+            while IFS= read -r fragment_file; do
+              [ -z "$fragment_file" ] && continue
+              if [ -n "$(tr -d '[:space:]' < "$fragment_file")" ]; then
+                echo "Issue #${issue_number}: Fragment found (${fragment_file})"
+                fragment_found="true"
+              else
+                echo "::warning file=${fragment_file}::The fragment is empty and does not count."
+              fi
+            done < <(printf '%s\n' "$added_files" | grep -E "$fragment_pattern" || true)
+
+            if [ "$fragment_found" != "true" ]; then
+              missing_issues="${missing_issues} #${issue_number}"
+              echo "::error::For issue #${issue_number} a new, non-empty fragment is missing, e.g., ${FRAGMENT_DIR}/${issue_number}.bugfix.md"
+            fi
+          done
+
+          if [ -n "$missing_issues" ]; then
+            {
+              echo "### Towncrier-Fragment missing"
+              echo "A fragment is missing for:${missing_issues}"
+              echo
+              echo "Allowed types: ${FRAGMENT_TYPES//|/, }"
+              echo "Example: \`${FRAGMENT_DIR}/<issue>.feature.md\` with a sentence for the changelog."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          echo "All connected issues have a fragment."

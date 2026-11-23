@@ -68,7 +68,7 @@ jobs:
       - name: 📦 ESPHome installieren
         run: |
           if [ -n "${{ github.event.inputs.esphome_version }}" ]; then
-            TARGET="${{ github.event.inputs.esphome_version }}"
+            TARGET="esphome${{ github.event.inputs.esphome_version }}"
             echo "🔧 Manuell angeforderte Version: $TARGET"
           else
             TARGET="esphome"   # latest
