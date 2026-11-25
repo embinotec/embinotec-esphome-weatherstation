@@ -78,3 +78,8 @@ for root in ROOTS:
         elif f.suffix.lower() in KEEP_EXT:
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(f, target)
+
+for name in ("LICENSE", "THIRD_PARTY.md"):
+    f = SRC / name
+    if f.is_file():
+        shutil.copy2(f, OUT / name)
