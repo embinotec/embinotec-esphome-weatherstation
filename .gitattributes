@@ -1,0 +1,28 @@
+## yaml-files
+*.yaml linguist-language=YAML
+*.yml linguist-language=YAML
+
+## markdown-files
+*.md linguist-language=Markdown
+
+## toml-files
+*.toml linguist-language=Toml
+
+## puml-files
+*.puml linguist-language=PlantUML
+
+## font files
+*.ttf linguist-language=Font
+
+## audio files
+*.wav linguist-language=Audio
+*.mp3 linguist-language=Audio
+
+## image files
+*.png linguist-language=Image
+*.jpg linguist-language=Image
+*.jpeg linguist-language=Image
+
+## CAD files
+*.stl linguist-language=CAD
+*.3mf linguist-language=CAD
