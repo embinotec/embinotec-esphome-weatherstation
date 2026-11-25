@@ -13,6 +13,7 @@ All notable changes to this project/product will be documented in this file.
 ### Added
 
 - Workflow: Check for changlog fragments before pull request.
+- Workflow: Sanitizer: checks config yaml and removes passwords or secret.
 
 
 ## [0.9.1](https://gitlab.com/embinotec/embinotec-esphome-weatherstation) - 2026-11-16
