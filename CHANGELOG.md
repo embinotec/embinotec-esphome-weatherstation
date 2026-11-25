@@ -8,15 +8,9 @@ All notable changes to this project/product will be documented in this file.
 
 <!-- towncrier release notes start -->
 
-## [v1.0.0](https://gitlab.com/embinotec/embinotec-esphome-weatherstation) - 2026-11-25
-
-No significant changes.
-
-
 ## [0.9.3](https://gitlab.com/embinotec/embinotec-esphome-weatherstation) - 2026-11-25
 
 No significant changes.
-
 
 ## [0.9.2](https://gitlab.com/embinotec/embinotec-esphome-weatherstation) - 2026-11-25
 
@@ -25,11 +19,9 @@ No significant changes.
 - Workflow: Check for changlog fragments before pull request.
 - Workflow: Sanitizer: checks config yaml and removes passwords or secret.
 
-
 ## [0.9.1](https://gitlab.com/embinotec/embinotec-esphome-weatherstation) - 2026-11-16
 
 No significant changes.
-
 
 ## [v0.1.1](https://gitlab.com/embinotec/embinotec-esphome-weatherstation) - 2026-11-16
 
@@ -45,7 +37,6 @@ No significant changes.
 - puml timing diagram
 - 
 
-
 ## [v0.1.1](https://gitlab.com/embinotec/embinotec-esphome-weatherstation) - 2026-10-06
 
 ### Added
@@ -55,7 +46,6 @@ No significant changes.
 - Towncrier support
 - CONTRIBUTE.md
 - 
-
 
 ## [0.1.0](https://gitlab.com/embinotec/embinotec-esphome-weatherstation) - 2026-10-01
 

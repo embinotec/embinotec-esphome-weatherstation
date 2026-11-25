@@ -26,27 +26,28 @@ jobs:
       - name: towncrier installieren
         run: pip install towncrier
 
-      - name: Release-Notes erzeugen (ohne Dateien zu ändern)
+      - name: Show changelog draft
         run: |
           VERSION="${TAG#v}"
           towncrier build --draft --version "$VERSION" \
-            --config towncrier.toml > release_notes.md
-          cat release_notes.md
+            --config towncrier.toml > release-notes.md
 
       - name: Release-Notes ins GitHub-Release schreiben
-        run: gh release edit "$TAG" --notes-file release_notes.md
+        run: | 
+          gh release edit "$TAG" --notes-file release-notes.md
+          rm release-notes.md
 
-      - name: CHANGELOG schreiben und Fragmente entfernen
+      - name: CHANGELOG create and delete fragments
         run: |
           VERSION="${TAG#v}"
           towncrier build --yes --version "$VERSION" \
-            --config towncrier.toml
+            -- date $(date --rfc-3339=date) --config towncrier.toml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           if git diff --cached --quiet; then
-            echo "Keine Änderungen, nichts zu committen."
+            echo "No changes, nothing to commit."
           else
-            git commit -m "Changelog für ${TAG}"
+            git commit -m "Created changelog of ${TAG}"
             git push
           fi
