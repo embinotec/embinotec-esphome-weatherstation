@@ -58,7 +58,7 @@ Weitere Pinout-Referenzen (ESP32-S3-DevKitC-1, ESP32-C6 SuperMini) sind als Komm
 
 ## Diagramme
 
-<!-- ![Diagram Image Link](timing.puml -->
+<!-- ![Diagram Image Link](./assets/diagrams/timing.puml -->
 
 
 ## Voraussetzungen
