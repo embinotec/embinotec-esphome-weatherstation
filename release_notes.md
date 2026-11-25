@@ -1,6 +1,8 @@
-## [0.9.1](https://gitlab.com/embinotec/embinotec-esphome-weatherstation) - 2026-11-16
+## [0.9.2](https://gitlab.com/embinotec/embinotec-esphome-weatherstation) - 2026-11-25
 
-No significant changes.
+### Added
+
+- Workflow: Check for changlog fragments before pull request.
 
 
 
