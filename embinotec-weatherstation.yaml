@@ -34,7 +34,8 @@ substitutions:
   devicename: "embinotec-weatherstation"
   friendly_devicename: "Embinotec WeatherStation"
   device_description: "WeatherStation with 8 sensors."
-
+  firmware_version: "v1.0.0"
+  hardware_version: "rev1.4"
 
 ## ------ ESPHome HEADER -------
 esphome:
@@ -137,7 +138,7 @@ wifi:
     storage: rtc
 ## Optional manual IP
 #  manual_ip:
-#    static_ip: 192.168.0.137
+#    static_ip: 192.168.0.42
 #    gateway: 192.168.0.1
 #    subnet: 255.255.255.0
   ## Enable fallback hotspot (captive portal) in case wifi connection fails
@@ -256,11 +257,11 @@ deep_sleep:
 ## fast blink: Error
 status_led:
   pin: 
-    number: GPIO0 ## esp32c6 
+    number: GPIO0
     inverted: false
 
 
-## ------ Interval: Vor jeder Messung die Teiler aktivieren ------
+## ------ Interval: Activate voltage dividers before each measurement ------
 interval:
   - interval: 30s
     id: update_components
@@ -273,7 +274,7 @@ interval:
       - switch.turn_on: divider_battery_enable
       - delay: 1200ms    ## 1uF stabilizing time
       - component.update: battery_voltage_raw
-      - delay: 2100ms                          # ← delayed_on/off abwarten
+      - delay: 2100ms                          ## ← delayed_on/off waiting
       - lambda: |-
           float v = id(battery_voltage_raw).state;
           bool charging = id(charge_detection).state;
@@ -290,7 +291,7 @@ interval:
 
           id(battery_present_state) = present;
           id(battery_present).publish_state(present);
-      - component.update: battery_status_text  # ← danach status text
+      - component.update: battery_status_text  ## ← post status text
         
       ## temperature and humidity
       - component.update: outside_temp_humi
@@ -851,21 +852,21 @@ text_sensor:
       return {buf};
       
   ## barometric pressure change per hour in hPa
-## ------ Barometric Pressure ------------
-#+1–2 hPa/h	Wetter bessert sich langsam
-#+2–6 hPa/h	Wetterbesserung, Wind nimmt ab
-#>6 hPa/h	Schnelle Wetterbesserung, aber danach oft wieder wechselhaft
-#–1–2 hPa/h	Wetter verschlechtert sich langsam
-#–2–6 hPa/h	Regen und Wind in 12–24h wahrscheinlich
-#<–6 hPa/h	Sturm möglich, sehr schnelle Verschlechterung
-#Stabil ±0,5 hPa	Wetter bleibt konstant
+  ## ------ Barometric Pressure ------------
+  ## +1–2 hPa/h	Wetter bessert sich langsam
+  ## +2–6 hPa/h	Wetterbesserung, Wind nimmt ab
+  ## >6 hPa/h	Schnelle Wetterbesserung, aber danach oft wieder wechselhaft
+  ## –1–2 hPa/h	Wetter verschlechtert sich langsam
+  ## –2–6 hPa/h	Regen und Wind in 12–24h wahrscheinlich
+  ## <–6 hPa/h	Sturm möglich, sehr schnelle Verschlechterung
+  ## Stabil ±0,5 hPa	Wetter bleibt konstant
 
-#>1020 hPa	stabil	Sonnig, trocken – ideale Bedingungen für Solarladung ☀️
-#>1020 hPa	fallend	Wetteränderung kommt, noch 12–24h gut
-#1000–1020 hPa	steigend	Besserung im Anzug
-#1000–1020 hPa	fallend	Regen wahrscheinlich
-#<1000 hPa	fallend	Schlechtwetter, Sturm möglich
-#<1000 hPa	steigend	Ende des Schlechtwetters
+  ## >1020 hPa	stabil	Sonnig, trocken – ideale Bedingungen für Solarladung ☀️
+  ## >1020 hPa	fallend	Wetteränderung kommt, noch 12–24h gut
+  ## 1000–1020 hPa	steigend	Besserung im Anzug
+  ## 1000–1020 hPa	fallend	Regen wahrscheinlich
+  ## <1000 hPa	fallend	Schlechtwetter, Sturm möglich
+  ## <1000 hPa	steigend	Ende des Schlechtwetters
     
   - platform: template
     name: "Baro.Druckänderung pro Stunde"
@@ -986,7 +987,3 @@ binary_sensor:
 ## SUB: -------- Wifi STATUS --------
 #  - platform: status
 #    name: "WiFi.status"
-
-
-
-
