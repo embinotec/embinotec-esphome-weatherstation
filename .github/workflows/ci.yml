@@ -101,7 +101,7 @@ jobs:
 
       - name: 📝 secrets.yaml erzeugen (CI-Dummy)
         run: |
-          cat > secrets.yaml << 'EOF'
+          cat > esphome/secrets.yaml << 'EOF'
           wifi_ssid: "CI_SSID"
           wifi_password: "CI_PASSWORD"
           encryption_key: "dGhpcyBpcyBhIHRlc3Qga2V5IGZvciBDSSBvbmx5ISE="
