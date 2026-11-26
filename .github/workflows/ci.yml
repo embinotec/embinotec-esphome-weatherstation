@@ -291,8 +291,11 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: site
+          name: github-pages
 
       - name: 🚀 Deploy
         if: steps.check.outputs.is_latest == 'true'
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          artifact_name: github-pages
