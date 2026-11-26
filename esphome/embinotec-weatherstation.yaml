@@ -128,6 +128,10 @@ ota:
     url: https://github.com/embinotec/embinotec-esphome-weatherstation/releases/latest/download/firmware.ota.bin
     md5: https://github.com/embinotec/embinotec-esphome-weatherstation/releases/latest/download/firmware.ota.bin.md5
 
+http_request:
+  buffer_size_rx: 2048
+  buffer_size_tx: 2048
+
 ## ------- WIFI SETTINGS -------
 ## You could either use Wifi or Thread below
 wifi:
