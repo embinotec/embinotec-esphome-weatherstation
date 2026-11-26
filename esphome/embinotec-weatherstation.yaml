@@ -44,6 +44,9 @@ esphome:
   min_version: 2026.8.0
   name_add_mac_suffix: false
   comment: ${device_description}
+  project:
+    name: ${devicename}
+    version: ${firmware_version}
   on_boot:
     priority: 600.0  # Run after components are initialized
     then:
@@ -143,7 +146,7 @@ wifi:
     storage: rtc
 ## Optional manual IP
 #  manual_ip:
-#    static_ip: 192.168.0.42
+#    static_ip: 192.168.0.42git
 #    gateway: 192.168.0.1
 #    subnet: 255.255.255.0
   ## Enable fallback hotspot (captive portal) in case wifi connection fails
