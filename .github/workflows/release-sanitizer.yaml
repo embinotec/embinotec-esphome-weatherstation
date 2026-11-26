@@ -7,6 +7,7 @@ on:
 permissions:
   contents: write
 
+# Mit release-changelog.yml teilen, damit sich die Pushes nicht überholen
 concurrency:
   group: release-push
   cancel-in-progress: false
@@ -18,7 +19,8 @@ jobs:
       TAG: ${{ github.event.release.tag_name }}
       BRANCH: ${{ github.event.repository.default_branch }}
       GH_TOKEN: ${{ github.token }}
-      MAIN_YAML: sanitized/esphome/tododisplay.yaml   # anpassen
+      MAIN_YAML: esphome/tododisplay.yaml     # Hauptprojekt-Datei (anpassen)
+      EXAMPLES_DIR: examples
     steps:
       - name: Stand des Release-Tags auschecken
         uses: actions/checkout@v4
@@ -57,7 +59,8 @@ jobs:
         working-directory: repo
         run: |
           pip install esphome
-          esphome config "$MAIN_YAML"
+          esphome version
+          esphome config "sanitized/${MAIN_YAML}"
 
       - name: sanitized/ auf den Hauptzweig committen
         working-directory: repo
