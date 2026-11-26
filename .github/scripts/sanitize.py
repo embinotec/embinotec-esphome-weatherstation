@@ -120,3 +120,10 @@ for item in COPY_PATHS:
         t.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(p, t)
         print(f"kopiert:   {item}")
+
+(OUT / "README.md").write_text(
+    "# sanitized\n\n"
+    "Automatisch erzeugt. Nicht von Hand bearbeiten.\n"
+    "Enthält keine WLAN-Zugangsdaten, Passwörter oder Verweise auf Secrets.\n",
+    encoding="utf-8",
+)
