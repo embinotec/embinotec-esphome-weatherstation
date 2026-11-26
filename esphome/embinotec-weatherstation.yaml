@@ -125,8 +125,6 @@ ota:
   - platform: esphome
     password: !secret ota_password
   - platform: http_request
-    url: https://github.com/embinotec/embinotec-esphome-weatherstation/releases/latest/download/firmware.ota.bin
-    md5: https://github.com/embinotec/embinotec-esphome-weatherstation/releases/latest/download/firmware.ota.bin.md5
 
 http_request:
   buffer_size_rx: 2048
@@ -944,6 +942,16 @@ text_sensor:
       if (delta > -0.5f) return {"🌧 Tiefdrucklage, anhaltend"};
       return {"⛈ Schlechtwetter – Sturm möglich"};
 ## Toggle wifi between openThread
+button:
+  - platform: template
+    name: "Firmware installieren"
+    on_press:
+      - deep_sleep.prevent: during_day
+      - ota.http_request.flash:
+          url: https://embinotec.github.io/embinotec-esphome-weatherstation/firmware/firmware.ota.bin
+          md5_url: https://embinotec.github.io/embinotec-esphome-weatherstation/firmware/firmware.ota.bin.md5
+      # wird nur erreicht, wenn kein Neustart erfolgt (Update fehlgeschlagen)
+      - deep_sleep.allow: during_day
 
 binary_sensor:
   ## ---- USER BUTTON -----
