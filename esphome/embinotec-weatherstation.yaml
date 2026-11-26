@@ -124,6 +124,9 @@ api:
 ota:
   - platform: esphome
     password: !secret ota_password
+  - platform: http_request
+    url: https://github.com/embinotec/embinotec-esphome-weatherstation/releases/latest/download/firmware.ota.bin
+    md5: https://github.com/embinotec/embinotec-esphome-weatherstation/releases/latest/download/firmware.ota.bin.md5
 
 ## ------- WIFI SETTINGS -------
 ## You could either use Wifi or Thread below
@@ -152,6 +155,11 @@ wifi:
 ## Works together with SUBSECTION wifi.ap
 captive_portal:
 
+## ------ Dashboard -------
+dashboard_import: 
+  package_import_url: github://esphome/esphome-project-template/project-template-esp32-c6.yaml
+  import_full_config: false # or true
+
 ## SUB:------- mDNS SETTINGS -------
 ## mDNS is a computer networking protocol that resolves hostnames to IP addresses within small networks that do not include a local name server.
 ## example: embinotec-weatherstation.local
@@ -176,7 +184,7 @@ improv_serial:
 ## off: The improv service is not running.
 esp32_improv:
   authorizer: user_button
-  
+
 ## ------- OpenThread -----------
 ## You could either use Thread or Wifi above
 #network:
@@ -192,7 +200,7 @@ esp32_improv:
 #  pskc: 0xc23a76e98f1a6483639b1ac1271e2e27
 #  mesh_local_prefix: fd53:145f:ed22:ad81::/64
 #  force_dataset: true
-    
+
 ## ------ NTP SERVER -------
 ## NTP Server to receive the time by NTP server.
 time:
@@ -733,10 +741,16 @@ sensor:
   ## SUB: ----- WIFI SIGNAL STRENGTH ------
   - platform: wifi_signal
     name: "Wi-Fi.Signal strength"
+    id: wifi_signal_strength
+    unit_of_measurement: "dBm"
     #update_interval: 60s
 ## SUB: ----- Internal Sensors-------
   - platform: internal_temperature
     name: "CPU Temperature"
+    id: cpu_temperature
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    device_class: temperature
     update_interval: 30s  ## optional
 
 ## SUB: ----- barometric pressure ----

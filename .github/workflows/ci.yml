@@ -5,6 +5,8 @@ on:
     branches: [master, dev]
   pull_request:
     branches: [master]
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       esphome_version:
@@ -27,6 +29,7 @@ jobs:
     name: "📊 Embed PlantUML in README"
     runs-on: ubuntu-latest        
     needs: validate               
+    if: github.event_name == 'push'
     permissions:
       contents: write             
     steps:
@@ -68,7 +71,7 @@ jobs:
       - name: 📦 ESPHome installieren
         run: |
           if [ -n "${{ github.event.inputs.esphome_version }}" ]; then
-            TARGET="esphome${{ github.event.inputs.esphome_version }}"
+            TARGET="esphome==${{ github.event.inputs.esphome_version }}"
             echo "🔧 Manuell angeforderte Version: $TARGET"
           else
             TARGET="esphome"   # latest
@@ -119,64 +122,177 @@ jobs:
     name: "🔨 Compile Firmware"
     runs-on: ubuntu-latest
     needs: validate
+    env:
+      MAIN_YAML: esphome/embinotec-weatherstation.yaml
+      EXAMPLES_DIR: examples
     steps:
       - name: ⬇️ Checkout
         uses: actions/checkout@v4
-
-      - name: 📋 ESPHome min_version aus YAML lesen
-        id: esphome_min
-        run: |
-          MIN=$(grep 'min_version:' esphome/embinotec-weatherstation.yaml \
-            | head -1 \
-            | sed 's/.*min_version:\s*//' \
-            | tr -d '"'\''[:space:]')
-          echo "version=$MIN" >> $GITHUB_OUTPUT
 
       - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
-      - name: 💾 pip Cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: pip-${{ runner.os }}-esphome-${{ steps.esphome_min.outputs.version }}
-          restore-keys: pip-${{ runner.os }}-esphome-
+          cache: pip
+          cache-dependency-path: .github/workflows/ci.yml
 
       - name: 📦 ESPHome installieren
+        env:
+          REQUESTED: ${{ github.event.inputs.esphome_version }}
         run: |
-          if [ -n "${{ github.event.inputs.esphome_version }}" ]; then
-            pip install esphome==${{ github.event.inputs.esphome_version }}
+          if [ -n "$REQUESTED" ]; then
+            pip install "esphome==$REQUESTED"
           else
             pip install esphome
           fi
+          echo "ESPHOME_VERSION=$(pip show esphome | awk '/^Version/ {print $2}')" >> "$GITHUB_ENV"
 
-      - name: 💾 ESPHome Build-Cache
+      - name: 💾 ESP-IDF Cache
         uses: actions/cache@v4
         with:
-          path: |
-            .esphome
-            ~/.platformio
-          key: esphome-build-${{ runner.os }}-${{ hashFiles('embinotec-weatherstation.yaml') }}
-          restore-keys: esphome-build-${{ runner.os }}-
+          path: ~/.cache/esphome/idf
+          key: esphome-idf-${{ runner.os }}-${{ env.ESPHOME_VERSION }}
 
-      - name: 📝 secrets.yaml erzeugen (CI-Dummy)
+      # Die veröffentlichte Firmware ist öffentlich herunterladbar. Sie darf weder
+      # echte noch Dummy-Zugangsdaten enthalten.
+      - name: 🧹 Konfiguration ohne Secrets erzeugen
         run: |
-          cat > esphome/secrets.yaml << 'EOF'
-          wifi_ssid: "CI_SSID"
-          wifi_password: "CI_PASSWORD"
-          encryption_key: "dGhpcyBpcyBhIHRlc3Qga2V5IGZvciBDSSBvbmx5ISE="
-          ota_password: "CI_OTA_PASSWORD"
-          fallback_pw: "CI_FALLBACK_PW"
-          EOF
+          python3 .github/scripts/sanitize.py . "$RUNNER_TEMP/sanitized"
+          if grep -rnE '!secret|^\s*(password|psk|passphrase)\s*:' "$RUNNER_TEMP/sanitized" \
+               --include='*.yaml' --include='*.yml'; then
+            echo "Es sind noch Secrets oder Passwörter enthalten."
+            exit 1
+          fi
+
+      - name: 🏷️ Firmware-Version bestimmen
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "release" ]; then
+            VERSION="$TAG"
+          else
+            VERSION="dev-${GITHUB_SHA::7}"
+          fi
+          echo "FW_VERSION=$VERSION" >> "$GITHUB_ENV"
 
       - name: 🔨 Firmware kompilieren
-        run: esphome compile esphome/embinotec-weatherstation.yaml
+        run: |
+          esphome -s firmware_version "$FW_VERSION" \
+            compile "$RUNNER_TEMP/sanitized/$MAIN_YAML"
+
+      - name: 🗂️ Firmware, MD5 und Manifest zusammenstellen
+        run: |
+          mkdir -p dist
+
+          # Der Build-Pfad hängt von der Toolchain ab, daher suchen statt fest eintragen
+          mapfile -t FOUND < <(find "$RUNNER_TEMP/sanitized" -type f -name firmware.ota.bin)
+          if [ "${#FOUND[@]}" -ne 1 ]; then
+            echo "Erwartet: genau 1 firmware.ota.bin, gefunden: ${#FOUND[@]}"
+            printf '%s\n' "${FOUND[@]}"
+            exit 1
+          fi
+          BUILD_DIR=$(dirname "${FOUND[0]}")
+
+          cp "$BUILD_DIR/firmware.ota.bin"     dist/    # für OTA
+          cp "$BUILD_DIR/firmware.factory.bin" dist/    # für Erstinstallation per USB
+
+          cd dist
+          # Nur der Hash (32 Zeichen), ohne Dateinamen
+          md5sum firmware.ota.bin | cut -d' ' -f1 > firmware.ota.bin.md5
+          md5sum firmware.factory.bin | cut -d' ' -f1 > firmware.factory.bin.md5
+
+          jq -n \
+            --arg version "$FW_VERSION" \
+            --arg md5 "$(cat firmware.ota.bin.md5)" \
+            --arg release_url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases" \
+            '{
+              name: "Embinotec WeatherStation",
+              version: $version,
+              builds: [{
+                chipFamily: "ESP32-C6",
+                ota: { path: "firmware.ota.bin", md5: $md5, release_url: $release_url }
+              }]
+            }' > manifest.json
+
+          ls -l
+          echo "MD5 (OTA): $(cat firmware.ota.bin.md5)"
 
       - name: 📦 Firmware als Artefakt speichern
         uses: actions/upload-artifact@v4
         with:
           name: firmware-${{ github.sha }}
-          path: .esphome/build/esphome/embinotec-weatherstation/.pioenvs/*/firmware.bin
+          path: dist/
+          if-no-files-found: error
           retention-days: 30
+
+  # -------------------------------------------------------
+  # Bei einem Release: Dateien dauerhaft ans Release hängen
+  # -------------------------------------------------------
+  release-assets:
+    name: "📎 Firmware ans Release hängen"
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    needs: compile
+    permissions:
+      contents: write
+    steps:
+      - name: ⬇️ Artefakt laden
+        uses: actions/download-artifact@v4
+        with:
+          name: firmware-${{ github.sha }}
+          path: dist
+
+      - name: 📤 Assets hochladen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$TAG" dist/* --clobber --repo "$GITHUB_REPOSITORY"
+
+  # -------------------------------------------------------
+  # Bei einem Release: feste URL für ota.http_request
+  # -------------------------------------------------------
+  deploy-pages:
+    name: "🌐 Firmware auf GitHub Pages veröffentlichen"
+    if: github.event_name == 'release' && !github.event.release.prerelease
+    runs-on: ubuntu-latest
+    needs: compile
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 🔎 Ist dieses Release "latest"?
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          LATEST=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)
+          echo "Dieses Release: $TAG | latest: $LATEST"
+          if [ "$TAG" = "$LATEST" ]; then
+            echo "is_latest=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: ⬇️ Artefakt laden
+        if: steps.check.outputs.is_latest == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: firmware-${{ github.sha }}
+          path: site/firmware
+
+      - name: 📤 Pages-Artefakt hochladen
+        if: steps.check.outputs.is_latest == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: 🚀 Deploy
+        if: steps.check.outputs.is_latest == 'true'
+        id: deployment
+        uses: actions/deploy-pages@v4
