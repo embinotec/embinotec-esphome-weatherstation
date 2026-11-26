@@ -45,7 +45,7 @@ esphome:
   name_add_mac_suffix: false
   comment: ${device_description}
   project:
-    name: ${devicename}
+    name: "embinotec.weatherstation"
     version: ${firmware_version}
   on_boot:
     priority: 600.0  # Run after components are initialized
