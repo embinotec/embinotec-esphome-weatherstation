@@ -187,7 +187,8 @@ improv_serial:
 ## blinking 3 times per second with a break in between: The identify command has been used by the client.
 ## blinking 5 times per second: Credentials are being verified and saved to the device.
 ## off: The improv service is not running.
-esp32_improv:
+## 2027.4.0 esp32_improv -> improv_ble
+improv_ble:
   authorizer: user_button
 
 ## ------- OpenThread -----------
