@@ -12,7 +12,7 @@ permissions:
   contents: write
 
 env:
-  MAIN_YAML: esphome/tododisplay.yaml     # Hauptprojekt-Datei (anpassen)
+  MAIN_YAML: esphome/embinotec-weatherstation.yaml     ## Hauptprojekt-Datei (anpassen)
   EXAMPLES_DIR: examples
 
 jobs:
