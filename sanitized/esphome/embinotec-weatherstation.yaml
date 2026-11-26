@@ -44,6 +44,9 @@ esphome:
   min_version: 2026.8.0
   name_add_mac_suffix: false
   comment: ${device_description}
+  project:
+    name: "embinotec.weatherstation"
+    version: ${firmware_version}
   on_boot:
     priority: 600.0  # Run after components are initialized
     then:
@@ -121,6 +124,11 @@ api:
 ## To be able to do updates over the Air by ESP Home it is nessesary to have this option activated.
 ota:
   - platform: esphome
+  - platform: http_request
+
+http_request:
+  buffer_size_rx: 2048
+  buffer_size_tx: 2048
 
 ## ------- WIFI SETTINGS -------
 ## You could either use Wifi or Thread below
@@ -133,7 +141,7 @@ wifi:
     storage: rtc
 ## Optional manual IP
 #  manual_ip:
-#    static_ip: 192.168.0.42
+#    static_ip: 192.168.0.42git
 #    gateway: 192.168.0.1
 #    subnet: 255.255.255.0
   ## Enable fallback hotspot (captive portal) in case wifi connection fails
@@ -145,6 +153,11 @@ wifi:
 ## SUB:------- CAPTIVE PORTAL SETTINGS --------
 ## Works together with SUBSECTION wifi.ap
 captive_portal:
+
+## ------ Dashboard -------
+dashboard_import: 
+  package_import_url: github://esphome/esphome-project-template/project-template-esp32-c6.yaml
+  import_full_config: false # or true
 
 ## SUB:------- mDNS SETTINGS -------
 ## mDNS is a computer networking protocol that resolves hostnames to IP addresses within small networks that do not include a local name server.
@@ -168,9 +181,10 @@ improv_serial:
 ## blinking 3 times per second with a break in between: The identify command has been used by the client.
 ## blinking 5 times per second: Credentials are being verified and saved to the device.
 ## off: The improv service is not running.
-esp32_improv:
+## 2027.4.0 esp32_improv -> improv_ble
+improv_ble:
   authorizer: user_button
-  
+
 ## ------- OpenThread -----------
 ## You could either use Thread or Wifi above
 #network:
@@ -186,7 +200,7 @@ esp32_improv:
 #  pskc: 0xc23a76e98f1a6483639b1ac1271e2e27
 #  mesh_local_prefix: fd53:145f:ed22:ad81::/64
 #  force_dataset: true
-    
+
 ## ------ NTP SERVER -------
 ## NTP Server to receive the time by NTP server.
 time:
@@ -727,10 +741,16 @@ sensor:
   ## SUB: ----- WIFI SIGNAL STRENGTH ------
   - platform: wifi_signal
     name: "Wi-Fi.Signal strength"
+    id: wifi_signal_strength
+    unit_of_measurement: "dBm"
     #update_interval: 60s
 ## SUB: ----- Internal Sensors-------
   - platform: internal_temperature
     name: "CPU Temperature"
+    id: cpu_temperature
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    device_class: temperature
     update_interval: 30s  ## optional
 
 ## SUB: ----- barometric pressure ----
@@ -920,6 +940,16 @@ text_sensor:
       if (delta > -0.5f) return {"🌧 Tiefdrucklage, anhaltend"};
       return {"⛈ Schlechtwetter – Sturm möglich"};
 ## Toggle wifi between openThread
+button:
+  - platform: template
+    name: "Firmware installieren"
+    on_press:
+      - deep_sleep.prevent: during_day
+      - ota.http_request.flash:
+          url: https://embinotec.github.io/embinotec-esphome-weatherstation/firmware/firmware.ota.bin
+          md5_url: https://embinotec.github.io/embinotec-esphome-weatherstation/firmware/firmware.ota.bin.md5
+      # wird nur erreicht, wenn kein Neustart erfolgt (Update fehlgeschlagen)
+      - deep_sleep.allow: during_day
 
 binary_sensor:
   ## ---- USER BUTTON -----
