@@ -3,6 +3,7 @@
 [![Made for ESPHome](https://img.shields.io/badge/Made%20for-ESPHome-blue?logo=esphome)](https://esphome.io/guides/made_for_esphome/)
 [![ESPHome Version](https://img.shields.io/badge/ESPHome-%E2%89%A52026.8.0-green)](https://esphome.io/changelog/)
 [![License](https://img.shields.io/github/license/embinotec/embinotec-esphome-weatherstation)](LICENSE.md)
+[![GitHub Pages](https://img.shields.io/website?url=https%3A%2F%2Fembinotec.github.io%2Fembinotec-esphome-weatherstation%2F&label=GitHub%20Pages&up_message=online&down_message=offline)](https://embinotec.github.io/embinotec-esphome-weatherstation/)
 
 ![Made for ESPHome](https://esphome.io/images/made-for-esphome-black-on-white.svg)
 
