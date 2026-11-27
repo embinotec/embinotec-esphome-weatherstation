@@ -8,6 +8,11 @@ All notable changes to this project/product will be documented in this file.
 
 <!-- towncrier release notes start -->
 
+## [0.9.9](https://gitlab.com/embinotec/embinotec-esphome-weatherstation) - 2026-11-27
+
+No significant changes.
+
+
 ## [0.9.8](https://gitlab.com/embinotec/embinotec-esphome-weatherstation) - 2026-11-26
 
 No significant changes.
