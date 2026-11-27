@@ -8,6 +8,37 @@ All notable changes to this project/product will be documented in this file.
 
 <!-- towncrier release notes start -->
 
+## [0.9.10](https://gitlab.com/embinotec/embinotec-esphome-weatherstation) - 2026-11-27
+
+No significant changes.
+
+
+## [0.9.9](https://gitlab.com/embinotec/embinotec-esphome-weatherstation) - 2026-11-27
+
+No significant changes.
+
+
+## [0.9.8](https://gitlab.com/embinotec/embinotec-esphome-weatherstation) - 2026-11-26
+
+No significant changes.
+
+
+## [0.9.7](https://gitlab.com/embinotec/embinotec-esphome-weatherstation) - 2026-11-26
+
+No significant changes.
+
+
+## [0.9.6](https://gitlab.com/embinotec/embinotec-esphome-weatherstation) - 2026-11-26
+
+### Added
+
+- Http\_request as component and ota.flash with button to force ([#1](https://gitlab.com/embinotec/embinotec-esphome-weatherstation/issues/1))
+
+### Fixed
+
+- sanitizing pipeline with firmware to GitHub.pages ([#1](https://gitlab.com/embinotec/embinotec-esphome-weatherstation/issues/1))
+
+
 ## [0.9.3](https://gitlab.com/embinotec/embinotec-esphome-weatherstation) - 2026-11-25
 
 No significant changes.
