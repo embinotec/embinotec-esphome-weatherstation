@@ -1,43 +1,85 @@
-# Simple workflow for deploying static content to GitHub Pages
-name: Deploy static content to Pages
+# Einziger Workflow, der GitHub Pages deployt: Webseite UND Firmware.
+name: Deploy Pages
 
 on:
-  # Runs on pushes targeting the default branch
   push:
     branches: ["master"]
-
-  # Allows you to run this workflow manually from the Actions tab
+    paths:
+      - "pages/**"
+      - "assets/images/**"
+      - ".github/workflows/static.yml"
   workflow_dispatch:
+  workflow_call:   # Aufruf aus ci.yml nach einem Release
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
-
 jobs:
-  # Single deploy job since we're just deploying
   deploy:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
       - name: Setup Pages
+        id: pages
         uses: actions/configure-pages@v5
+
+      - name: Bilder zur Seite kopieren
+        run: |
+          mkdir -p pages/assets/images
+          cp assets/images/* pages/assets/images/
+
+      - name: index.md mit Jekyll bauen
+        uses: actions/jekyll-build-pages@v1
+        with:
+          source: ./pages
+          destination: ./_site
+
+      - name: Firmware des "latest"-Releases ergänzen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_URL: ${{ steps.pages.outputs.base_url }}
+        run: |
+          sudo chown -R "$USER" _site
+          FILES="firmware.ota.bin firmware.ota.bin.md5 firmware.factory.bin firmware.factory.bin.md5 manifest.json"
+          ARGS=()
+          for f in $FILES; do ARGS+=(--pattern "$f"); done
+
+          mkdir -p fw
+          gh release download --repo "$GITHUB_REPOSITORY" --dir fw "${ARGS[@]}" || true
+
+          COMPLETE=true
+          for f in $FILES; do [ -s "fw/$f" ] || COMPLETE=false; done
+
+          if [ "$COMPLETE" = true ]; then
+            mkdir -p _site/firmware
+            cp fw/* _site/firmware/
+          else
+            # Eine bereits veröffentlichte Firmware nie durch "nichts" ersetzen
+            STATUS=$(curl -sSL -o /dev/null -w '%{http_code}' "$BASE_URL/firmware/manifest.json")
+            if [ "$STATUS" != "404" ]; then
+              echo "::error::Firmware im latest-Release unvollständig (HTTP $STATUS für die bisherige). Kein Deployment."
+              exit 1
+            fi
+            echo "::warning::Noch keine Firmware vorhanden, nur die Webseite wird veröffentlicht."
+          fi
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload entire repository
-          path: '.'
+          path: _site
+
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@v4
