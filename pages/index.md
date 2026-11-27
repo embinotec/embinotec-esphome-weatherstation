@@ -52,6 +52,13 @@ Die Automationen richtest du in Home Assistant passend zu deinen Geräten ein.
 - [Fehler melden oder Idee vorschlagen](https://github.com/embinotec/embinotec-esphome-weatherstation/issues)
 - [Lizenz](https://github.com/embinotec/embinotec-esphome-weatherstation/blob/master/LICENSE.md)
 
+## Aktuelle Firmware
+
+| Download | Verwendung | Prüfsumme |
+|---|---|---|
+| [**OTA-Firmware**](firmware/firmware.ota.bin){: download="firmware.ota.bin" } | Update einer Station über WLAN | [MD5](firmware/firmware.ota.bin.md5) |
+| [**Factory-Firmware**](firmware/firmware.factory.bin){: download="firmware.factory.bin" } | Erstinstallation oder Wiederherstellung per USB | [MD5](firmware/firmware.factory.bin.md5) |
+
 ## Hol dir dein eigenes Wetter ins Smart Home
 
 **[Jetzt die embinotec WeatherStation ansehen](https://www.embinotec.de/produktseite/wetterstation){: .btn style="color:#fff;background-color:#157878" }**
